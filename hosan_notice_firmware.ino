@@ -146,8 +146,8 @@ void setup() {
   lcd.print("Connecting WIFI");
  
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
- 
-  while (WiFi.status() != WL_CONNECTED) {
+
+  while (WiFi.status() != WL_CONNECTED && !digitalRead(BUTTON)) {
     delay(500);
     Serial.print(".");
   }
