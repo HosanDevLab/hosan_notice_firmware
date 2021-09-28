@@ -1,11 +1,11 @@
 #pragma GCC optimize ("-O2")
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 #include "wpa2_enterprise.h"
+#include <ArduinoJson.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <Scheduler.h>
-#include <Firebase_ESP_Client.h>
-// #include "addons/TokenHelper.h"
 #include "config.h"
 #define TRIG 2 // D4
 #define ECHO 16 // D0
@@ -13,18 +13,11 @@
 #define LED_G 12 // D6
 #define LED_B 13 // D7
 #define BUTTON 15 // D8
-#define HOST "www.google.com"
-#define PORT 80
 #define VERSION "beta-0.1.0"
 #define LCD_BLANK "                "
 
 WiFiServer server(80);
 LiquidCrystal_I2C lcd(0x27,16,2);
-
-FirebaseData fbdo;
-
-FirebaseAuth auth;
-FirebaseConfig config;
 
 int menu = 0;
 float sonarDistance = 0;
@@ -54,7 +47,7 @@ protected:
     digitalWrite(TRIG,LOW);
     duration = pulseIn(ECHO,HIGH);
     sonarDistance = duration * 17/1000;
-    sonarPercent = duration * 105/1000;
+    sonarPercent = 100 - (duration * 105/1000);
 
     Serial.println(sonarDistance);
 
@@ -137,32 +130,30 @@ class dataPostTask : public Task {
 protected:
   void setup () {}
 
-  void loop() {
-    Serial.print(Firebase.ready());
-    if (Firebase.ready())
-    {
-      FirebaseJson content;
-      
-      content.clear();
-      if (GENDER == 0)
-      {
-        content.set("fields/man/integerValue", String(sonarPercent).c_str());  
-      } else {
-        content.set("fields/woman/integerValue", String(sonarPercent).c_str());
-      }
+  void loop() {    
+    WiFiClient client;
+    HTTPClient http;
+    http.begin(client, BACKEND_HOST);
 
-      Serial.print("Update a document... ");
+    http.addHeader("Content-Type", "application/json");
 
-      char p1[] = "toilet_paper/";
-      char p2[] = FIREBASE_DOC_ID;
+    StaticJsonDocument<256> doc;
+    doc["id"] = FIREBASE_DOC_ID;
+    doc["percent"] = sonarPercent;
+    doc["type"] = "man";
 
-      if (Firebase.Firestore.patchDocument(&fbdo, FIREBASE_PROJECT_ID, "", strcat(p1, p2), content.raw(), GENDER == 0 ? "man" : "woman"))
-        Serial.printf("ok\n%s\n\n", fbdo.payload().c_str());
-      else
-        Serial.println(fbdo.errorReason());
-      delay(60000);
-    }
-    else delay(1000);
+    String jsonChar;
+    serializeJson(doc, Serial);
+    serializeJson(doc, jsonChar);
+    
+    int httpResponseCode = http.POST(jsonChar);
+
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+
+    http.end();
+    
+    delay(60000);
     yield();
   }
 } data_post_task;
@@ -248,33 +239,6 @@ void setup() {
 
   if (WiFi.status() == WL_CONNECTED)
   {
-    // Connecting to Firebase
-    lcd.setCursor(0, 1);
-    lcd.print("Connecting DB...");
-  
-    // config.service_account.json.path = FIREBASE_SERVICE_ACCOUNT_FILE;
-    // config.service_account.json.storage_type = mem_storage_type_flash;
-    // config.token_status_callback = tokenStatusCallback;
-    // config.max_token_generation_retry = 5;
-    // auth.token.uid = "";
-    config.api_key = FIREBASE_API_KEY;
-
-    auth.user.email = FIREBASE_USER_EMAIL;
-    auth.user.password = FIREBASE_USER_PASSWORD;
-
-    Firebase.reconnectWiFi(true);
-    Firebase.begin(&config, &auth);
-
-    /*
-    while (!Firebase.ready()) {
-      delay(500);
-      Serial.print(".");
-    }
-    */
-  
-    delay(1000);
-    
-  
     // Start the server
     lcd.setCursor(0, 1);
     lcd.print("Starting Server");
