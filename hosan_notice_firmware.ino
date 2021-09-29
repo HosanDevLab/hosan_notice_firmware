@@ -48,6 +48,7 @@ protected:
     duration = pulseIn(ECHO,HIGH);
     sonarDistance = duration * 17/1000;
     sonarPercent = 100 - (duration * 105/1000);
+    if (sonarPercent < 0) sonarPercent = 0;
 
     Serial.println(sonarDistance);
 
@@ -153,7 +154,7 @@ protected:
 
     http.end();
     
-    delay(60000);
+    delay(30000);
     yield();
   }
 } data_post_task;
