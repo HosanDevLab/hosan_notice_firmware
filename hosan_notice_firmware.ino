@@ -40,14 +40,15 @@ protected:
 
   void loop() {       
     float duration = 0;
-    digitalWrite(TRIG,LOW);
+    digitalWrite(TRIG, LOW);
     delayMicroseconds(2);
-    digitalWrite(TRIG,HIGH);
+    digitalWrite(TRIG, HIGH);
     delayMicroseconds(10);
-    digitalWrite(TRIG,LOW);
+    digitalWrite(TRIG, LOW);
     duration = pulseIn(ECHO,HIGH);
     sonarDistance = duration * 17/1000;
-    sonarPercent = 100 - (duration * 105/1000);
+    // sonarPercent = 100 - (duration * 105/1000);
+    sonarPercent = 100 - ((sonarDistance - 4) / 7 * 100);
     if (sonarPercent < 0) sonarPercent = 0;
 
     Serial.println(sonarDistance);
